@@ -37,6 +37,22 @@ function sanitizeFileName(fileName) {
     .trim();
 }
 
+function formatError(error) {
+  const details = error?.properties?.errors?.map((err) => ({
+    id: err.properties?.id,
+    tag: err.properties?.xtag || err.properties?.tag,
+    explanation: err.properties?.explanation,
+    context: err.properties?.context,
+    file: err.properties?.file,
+    offset: err.properties?.offset
+  })) || [];
+
+  return {
+    message: error.message,
+    details
+  };
+}
+
 async function downloadTemplate(templateUrl) {
   if (!templateUrl || !/^https?:\/\//i.test(templateUrl)) {
     throw new Error('templateUrl deve começar com http ou https.');
@@ -140,11 +156,13 @@ app.post('/render-contract', requireApiKey, async (req, res) => {
     res.setHeader('Content-Disposition', `attachment; filename="${finalName}"`);
     return res.send(pdfBuffer);
   } catch (error) {
-    console.error(error);
+    const formatted = formatError(error);
+    console.error(JSON.stringify(formatted, null, 2));
     return res.status(500).json({
       ok: false,
       error: 'Render failed',
-      message: error.message
+      message: formatted.message,
+      details: formatted.details
     });
   }
 });
